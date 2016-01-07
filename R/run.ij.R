@@ -1,4 +1,4 @@
-run.ij <- function(path.imagej = NULL, set.memory = 4, set.directory, distance.pixel = 826, known.distance = 21, trim.pixel = 20, low.circ = 0, upper.circ = 1, low.size = 0.7, upper.size = "Infinity", prefix="\\.|-",log=F,check.image=F,save.image=F){
+run.ij <- function(path.imagej = NULL, path.ij = NULL, plugindir = NULL, set.memory = 4, set.directory, distance.pixel = 826, known.distance = 21, trim.pixel = 20, low.circ = 0, upper.circ = 1, low.size = 0.7, upper.size = "Infinity", prefix="\\.|-",log=F,check.image=F,save.image=F){
 
 file.list <- list.files(set.directory)
 file.list <- file.list[grep(".jpeg$|.jpg$|.JPEG$|.JPG$|.tif$|.tiff$|.Tif$|.Tiff$",file.list)]
@@ -15,13 +15,15 @@ size.arg <- paste(low.size,upper.size,sep="-")
 
 
 os <-.Platform$OS.type
+if(is.null(path.ij)) {
 if (is.null(path.imagej)==T){
 imagej <- find.ij(ostype = .Platform$OS.type)
 if(imagej=="ImageJ not found") return("ImageJ not found") else path.imagej <- imagej
 }
-
+}
 
 ##additional check
+if(is.null(path.ij)) {
 if (os=="windows"){
 	#slash is replaced by backslash because they don't work in batch
 	path.imagej <- gsub("/","\\\\",path.imagej)
@@ -37,7 +39,7 @@ if (os=="windows"){
 	if(file.exists(paste(path.imagej,look,sep=""))!=T & file.exists(paste(path.imagej,look,sep="/"))!=T) {warning("Specify the correct path to ImageJ")
 			return("ImageJ not found")}
 }
-
+}
 
 if (os == "windows"){temp <- paste(tempdir(),"\\",sep="")
 temp <- gsub("\\\\","\\\\\\\\",temp)} else {temp <- paste(tempdir(),"/",sep="")
@@ -61,7 +63,9 @@ if(check.image==T) {
 
 #use it in imageJ
 if (os == "windows"){
-
+  if (!is.null(path.ij)) {
+    bat <- paste("java -jar -Xmx", set.memory, "g ", normalizePath(path.ij), " -ijpath ", normalizePath(plugindir), " ", exe , tempmacro, " ", set.directory, "\n pause\n exit", sep = "")
+  } else 
 	if (length(strsplit(set.directory," ")[[1]]) >1) {
 	bat <- paste("pushd ", path.imagej, "\n jre\\bin\\java -jar -Xmx",set.memory,"g ij.jar ",exe ,tempmacro, ' "',set.directory,'"\n pause\n exit',sep="") 
 	} else bat <- paste("pushd ", path.imagej, "\n jre\\bin\\java -jar -Xmx",set.memory,"g ij.jar ",exe ,tempmacro," ",set.directory,"\n pause\n exit",sep="")
@@ -73,16 +77,20 @@ if (os == "windows"){
 	shell(tempbat,wait=wait)
 
 	} else {
+    if(is.null(path.ij)){
 		temp.slash2 <- substr(path.imagej,nchar(path.imagej),nchar(path.imagej))
 		if(temp.slash2!="/" ){
 			path.imagej <- paste(path.imagej,"/",sep="")
 		} 
-
+    }
 		# this allows space in path
 		set.directory <- gsub(" ", "\\ ", set.directory, fixed=TRUE)
 
 		unix.check <- Sys.info()["sysname"]
-		if(unix.check=="Linux") {
+		if (!is.null(path.ij)) {
+		  system(paste("java -Xmx", set.memory, "g -jar ", path.ij, " -ijpath ", path.ij, " -ijpath ", plugindir, " ", exe, tempmacro, " ", set.directory, sep = ""), wait = wait)
+		} else
+				if(unix.check=="Linux") {
 			system(paste("java -Xmx",set.memory,"g -jar ",path.imagej,"ij.jar -ijpath ",path.imagej," ",exe,tempmacro," ",set.directory,sep=""),wait=wait)
 		} else {system(paste("java -Xmx",set.memory,"g -jar ",path.imagej,"ImageJ64.app/Contents/Resources/Java/ij.jar -ijpath ",path.imagej," ",exe,tempmacro," ",set.directory,sep=""),wait=wait)
 }
